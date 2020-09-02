@@ -42,11 +42,11 @@ func Configure(configFlags *flags.CommonFlags) error {
 		if err != nil {
 			return errors.Wrap(err, "failed to input configuration")
 		}
+	}
 
-		if credentials.SupportsStorage() {
-			if err := storeCredentials(configFlags, account); err != nil {
-				return err
-			}
+	if credentials.SupportsStorage() {
+		if err := storeCredentials(configFlags, account); err != nil {
+			return err
 		}
 	}
 
@@ -71,7 +71,7 @@ func storeCredentials(configFlags *flags.CommonFlags, account *cfg.IDPAccount) e
 		if err := credentials.SaveCredentials(account.URL, account.Username, configFlags.Password); err != nil {
 			return errors.Wrap(err, "error storing password in keychain")
 		}
-	} else {
+	} else if !configFlags.SkipPrompt {
 		password := prompter.Password("Password")
 		if password != "" {
 			if confirmPassword := prompter.Password("Confirm"); confirmPassword == password {

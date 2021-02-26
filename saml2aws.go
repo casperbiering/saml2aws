@@ -2,8 +2,9 @@ package saml2aws
 
 import (
 	"fmt"
-	"github.com/versent/saml2aws/v2/pkg/provider/netiq"
 	"sort"
+
+	"github.com/versent/saml2aws/v2/pkg/provider/netiq"
 
 	"github.com/versent/saml2aws/v2/pkg/cfg"
 	"github.com/versent/saml2aws/v2/pkg/creds"
@@ -30,7 +31,7 @@ type ProviderList map[string][]string
 // MFAsByProvider a list of providers with their respective supported MFAs
 var MFAsByProvider = ProviderList{
 	"AzureAD":       []string{"Auto", "PhoneAppOTP", "PhoneAppNotification", "OneWaySMS"},
-	"ADFS":          []string{"Auto", "VIP", "Azure"},
+	"ADFS":          []string{"Auto", "VIP", "Azure", "Defender"},
 	"ADFS2":         []string{"Auto", "RSA"}, // nothing automatic about ADFS 2.x
 	"Ping":          []string{"Auto"},        // automatically detects PingID
 	"PingOne":       []string{"Auto"},        // automatically detects PingID
@@ -84,6 +85,7 @@ func invalidMFA(provider string, mfa string) bool {
 // SAMLClient client interface
 type SAMLClient interface {
 	Authenticate(loginDetails *creds.LoginDetails) (string, error)
+	Validate(loginDetails *creds.LoginDetails) error
 }
 
 // NewSAMLClient create a new SAML client

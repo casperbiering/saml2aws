@@ -27,14 +27,16 @@ type CommonFlags struct {
 	ResourceID           string
 	DisableKeychain      bool
 	Region               string
+	CredentialsFile      string
 }
 
 // LoginExecFlags flags for the Login / Exec commands
 type LoginExecFlags struct {
-	CommonFlags  *CommonFlags
-	Force        bool
-	DuoMFAOption string
-	ExecProfile  string
+	CommonFlags       *CommonFlags
+	Force             bool
+	DuoMFAOption      string
+	ExecProfile       string
+	CredentialProcess bool
 }
 
 type ConsoleFlags struct {
@@ -92,5 +94,8 @@ func ApplyFlagOverrides(commonFlags *CommonFlags, account *cfg.IDPAccount) {
 	}
 	if commonFlags.Region != "" {
 		account.Region = commonFlags.Region
+	}
+	if commonFlags.CredentialsFile != "" {
+		account.CredentialsFile = commonFlags.CredentialsFile
 	}
 }

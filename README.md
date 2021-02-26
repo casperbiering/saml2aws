@@ -66,7 +66,6 @@ Aside from Okta, most of the providers in this project are using screen scraping
 If you're on OSX you can install saml2aws using homebrew!
 
 ```
-brew tap versent/homebrew-taps
 brew install saml2aws
 saml2aws --version
 ```
@@ -121,6 +120,7 @@ A command line tool to help with SAML access to the AWS token service.
 Flags:
       --help                   Show context-sensitive help (also try --help-long and --help-man).
       --version                Show application version.
+      --quiet                  silences logs
       --verbose                Enable verbose logging
   -i, --provider=PROVIDER      This flag is obsolete. See: https://github.com/Versent/saml2aws#configuring-idp-accounts
   -a, --idp-account="default"  The name of the configured IDP account. (env: SAML2AWS_IDP_ACCOUNT)
@@ -160,28 +160,36 @@ Commands:
   login [<flags>]
     Login to a SAML 2.0 IDP and convert the SAML assertion to an STS token.
 
-    -p, --profile=PROFILE      The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
+    -p, --profile=PROFILE        The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
         --duo-mfa-option=DUO-MFA-OPTION
-                               The MFA option you want to use to authenticate with
-        --client-id=CLIENT-ID  OneLogin client id, used to generate API access token. (env: ONELOGIN_CLIENT_ID)
+                                 The MFA option you want to use to authenticate with
+        --client-id=CLIENT-ID    OneLogin client id, used to generate API access token. (env: ONELOGIN_CLIENT_ID)
         --client-secret=CLIENT-SECRET
-                               OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)
-        --force                Refresh credentials even if not expired.
+                                 OneLogin client secret, used to generate API access token. (env: ONELOGIN_CLIENT_SECRET)
+        --force                  Refresh credentials even if not expired.
+        --credential-process     Enables AWS Credential Process support by outputting credentials to STDOUT in a JSON message.
+        --credentials-file=CREDENTIALS-FILE
+                                 The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
 
   exec [<flags>] [<command>...]
     Exec the supplied command with env vars from STS token.
 
-    -p, --profile=PROFILE  The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
+    -p, --profile=PROFILE      The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
         --exec-profile=EXEC-PROFILE
-                           The AWS profile to utilize for command execution. Useful to allow the aws cli to perform secondary role assumption. (env: SAML2AWS_EXEC_PROFILE)
+                               The AWS profile to utilize for command execution. Useful to allow the aws cli to perform secondary role assumption. (env: SAML2AWS_EXEC_PROFILE)
+        --credentials-file=CREDENTIALS-FILE
+                               The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
 
   console [<flags>]
     Console will open the aws console after logging in.
 
         --exec-profile=EXEC-PROFILE
-                           The AWS profile to utilize for console execution. (env: SAML2AWS_EXEC_PROFILE)
-    -p, --profile=PROFILE  The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
-        --force            Refresh credentials even if not expired.
+                               The AWS profile to utilize for console execution. (env: SAML2AWS_EXEC_PROFILE)
+    -p, --profile=PROFILE      The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
+        --force                Refresh credentials even if not expired.
+        --link                 Present link to AWS console instead of opening browser
+        --credentials-file=CREDENTIALS-FILE
+                               The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
 
   list-roles
     List available role ARNs.
@@ -190,8 +198,10 @@ Commands:
   script [<flags>]
     Emit a script that will export environment variables.
 
-    -p, --profile=PROFILE  The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
-        --shell=bash       Type of shell environment. Options include: bash, powershell, fish
+    -p, --profile=PROFILE      The AWS profile to save the temporary credentials. (env: SAML2AWS_PROFILE)
+        --shell=bash           Type of shell environment. Options include: bash, powershell, fish
+        --credentials-file=CREDENTIALS-FILE
+                               The file that will cache the credentials retrieved from AWS. When not specified, will use the default AWS credentials file location. (env: SAML2AWS_CREDENTIALS_FILE)
 
 
 ```
@@ -539,6 +549,12 @@ Then to test the software just run.
 make test
 ```
 
+Before raising a PR please run the linter.
+
+```
+make lint-fix
+```
+
 ## Environment vars
 
 The exec sub command will export the following environment variables.
@@ -597,6 +613,22 @@ The second emits the content of requests and responses, this includes authentica
 ```
 DUMP_CONTENT=true saml2aws login --verbose
 ```
+# Using saml2aws as credential process
+
+[Credential Process](https://github.com/awslabs/awsprocesscreds) is a convenient way of interfacing credential providers with the AWS Cli.
+
+You can use `saml2aws` as a credential provider by simply configuring it and then adding a profile to the AWS configuration. `saml2aws` has a flag `--credential-process` generating an output with the right JSON format, as well as a flag `--quiet` that will block the logging from being displayed.
+The AWS credential file (typically ~/.aws/credentials) has precedence over the credential_process provider. That means that if credentials are present in the file, the credential process will not trigger. To counter that you can override the aws credential location of `saml2aws` to another file using `--credential-file` or specifying it during `configure`.
+
+An example of the aws configuration (`~/.aws/config`):
+
+```
+[profile mybucket]
+region = us-west-1
+credential_process = saml2aws login --skip-prompt --quiet --credential-process --role <ROLE> --profile mybucket
+```
+
+When using the aws cli with the `mybucket` profile, the authentication process will be run and the aws will then be executed based on the returned credentials.
 
 # License
 

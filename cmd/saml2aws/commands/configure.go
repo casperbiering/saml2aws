@@ -21,6 +21,7 @@ const OneLoginOAuthPath = "/auth/oauth2/v2/token"
 func Configure(configFlags *flags.CommonFlags) error {
 
 	idpAccountName := configFlags.IdpAccount
+	idpAccountPassword := configFlags.Password
 
 	// pass in alternative location of saml2aws config file, if set.
 	cfgm, err := cfg.NewConfigManager(configFlags.ConfigFile)
@@ -42,10 +43,24 @@ func Configure(configFlags *flags.CommonFlags) error {
 		if err != nil {
 			return errors.Wrap(err, "failed to input configuration")
 		}
+
+		if idpAccountPassword == "" {
+			password := prompter.Password("Password")
+			if password != "" {
+				if confirmPassword := prompter.Password("Confirm"); confirmPassword == password {
+					idpAccountPassword = password
+				} else {
+					log.Println("Passwords did not match")
+					os.Exit(1)
+				}
+			} else {
+				log.Println("No password supplied")
+			}
+		}
 	}
 
 	if credentials.SupportsStorage() {
-		if err := storeCredentials(configFlags, account); err != nil {
+		if err := storeCredentials(configFlags, account, idpAccountPassword); err != nil {
 			return err
 		}
 	}
@@ -63,27 +78,13 @@ func Configure(configFlags *flags.CommonFlags) error {
 	return nil
 }
 
-func storeCredentials(configFlags *flags.CommonFlags, account *cfg.IDPAccount) error {
+func storeCredentials(configFlags *flags.CommonFlags, account *cfg.IDPAccount, idpAccountPassword string) error {
 	if configFlags.DisableKeychain {
 		return nil
 	}
-	if configFlags.Password != "" {
-		if err := credentials.SaveCredentials(account.URL, account.Username, configFlags.Password); err != nil {
+	if idpAccountPassword != "" {
+		if err := credentials.SaveCredentials(account.URL, account.Username, idpAccountPassword); err != nil {
 			return errors.Wrap(err, "error storing password in keychain")
-		}
-	} else if !configFlags.SkipPrompt {
-		password := prompter.Password("Password")
-		if password != "" {
-			if confirmPassword := prompter.Password("Confirm"); confirmPassword == password {
-				if err := credentials.SaveCredentials(account.URL, account.Username, password); err != nil {
-					return errors.Wrap(err, "error storing password in keychain")
-				}
-			} else {
-				log.Println("Passwords did not match")
-				os.Exit(1)
-			}
-		} else {
-			log.Println("No password supplied")
 		}
 	}
 	if account.Provider == onelogin.ProviderName {
